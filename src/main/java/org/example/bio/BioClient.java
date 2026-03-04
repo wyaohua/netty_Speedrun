@@ -10,25 +10,25 @@ public class BioClient {
     public static void main(String[] args) throws Exception {
 
 
-        Thread thread1 = new Thread(() -> {
+        Thread jerry = new Thread(() -> {
             try {
                 sendHello();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        });
+        },"jerry");
 
-        Thread theard2 = new Thread(() -> {
+        Thread tom = new Thread(() -> {
             try {
                 sendHello();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
-        thread1.start();
-        thread1.join();
-        theard2.start();
-        theard2.join();
+        jerry.start();
+        jerry.join();
+        tom.start();
+        tom.join();
 
     }
 
@@ -38,7 +38,7 @@ public class BioClient {
         socket.connect(new InetSocketAddress("localhost",8080));
         OutputStream outputStream = socket.getOutputStream();
         for (int i = 0; i < 10; i++) {
-            outputStream.write(("hello" + i).getBytes());
+            outputStream.write((Thread.currentThread().getName()+"hello " + i).getBytes());
             outputStream.flush();
         }
         socket.close();

@@ -3,7 +3,6 @@ package org.example.Nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -16,6 +15,13 @@ import java.util.Set;
  *  1.1 Channel 就是消息的通道
  *  1.2 buffer 消息的载体
  *  1.3 selector监听多个channel的状态， 实现多路复用的核心；
+ *
+ *  //核心问题： ByteBuffer大小的设置  过大会导致粘包现象， 过小导致半包现象；这个是TCP导致的
+ *  // * 描述  为了解决版本一的 粘包和半包问题；需要在客户端和服务端之间指定一些规则，通过这些规则保证一条完整消息的获取；
+ *  * 规则：每条消息的第一个字节设置为消息的长度；或者其他规则 能解决问题即可
+ *  
+ *
+ *
  */
 public class NioServer {
 
@@ -23,7 +29,7 @@ public class NioServer {
         //服务端channel （大马路）
         ServerSocketChannel ssc = ServerSocketChannel.open();
         ssc.configureBlocking(false); //读取是非阻塞的
-        ssc.bind(new InetSocketAddress("loaclhost",8080));
+        ssc.bind(new InetSocketAddress("localhost",8080));
 
 
         //在serverSocket上注册一个 selector ,并且监听连接事件
@@ -63,7 +69,9 @@ public class NioServer {
                     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
                     int length = channel.read(byteBuffer);
                     if (length == -1){
+                        System.out.println("客户端 断开了连接" +channel.getRemoteAddress());
                         channel.close();
+
                     }else{
                         byteBuffer.flip();
                         byte[] buffer =new byte[byteBuffer.remaining()];
