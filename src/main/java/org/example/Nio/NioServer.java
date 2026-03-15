@@ -3,6 +3,7 @@ package org.example.Nio;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
@@ -36,6 +37,7 @@ public class NioServer {
         Selector selector = Selector.open();
 
         //注册监听，注册了一个ServerSocketChannel对应OP_ACCEPT 连接事件；
+        //可以通过cancel函数 解除selector的监听
         ssc.register(selector,SelectionKey.OP_ACCEPT);
 
         while (true){
@@ -63,22 +65,37 @@ public class NioServer {
                 }
                 //说明有数据可读
                 if (key.isReadable()){
-                    //可读事件 只对应了 SocketChannel ，所以强转为SocketChannel类型；
-                    SocketChannel channel = (SocketChannel)key.channel();
-                    //开始处理数据
-                    ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
-                    int length = channel.read(byteBuffer);
-                    if (length == -1){
-                        System.out.println("客户端 断开了连接" +channel.getRemoteAddress());
-                        channel.close();
+                    try {
+                        //可读事件 只对应了 SocketChannel ，所以强转为SocketChannel类型；
+                        SocketChannel channel = (SocketChannel)key.channel();
+                        //开始处理数据
+                        ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
+                        int length = channel.read(byteBuffer);
+                        //不管客户端正常还是异常的断开都会产生一个读事件；
+                        //正常断开返回-1 ；
+                        //异常断开 read报错
+                        if (length == -1){
+                            System.out.println("客户端 正常断开了连接" +channel.getRemoteAddress());
+                            //channel.close包含了 cancel的功能；也会把当前的key取消注册了；
+                            // cancel只是取消了 channel的注册，但是这个channel还在；
+                            channel.close();
 
-                    }else{
-                        byteBuffer.flip();
-                        byte[] buffer =new byte[byteBuffer.remaining()];
-                        byteBuffer.get(buffer);
-                        String message =new String(buffer);
-                        System.out.println(message);
+                        }else{
+                            byteBuffer.flip();
+                            byte[] buffer =new byte[byteBuffer.remaining()];
+                            byteBuffer.get(buffer);
+                            String message =new String(buffer);
+                            System.out.println(message);
+                        }
+                    }catch (Exception e){
+                        System.out.println("客户端 异常断开了连接" );
+
+                        //没有使用key.cancel();进行取消channel的注册；
+                        //因为channel.close(); 有两个功能；1.取消channel的注册 2.还会把这个channel删除了
+                        SelectableChannel channel = key.channel();
+                        channel.close();
                     }
+
 
                 }
 
